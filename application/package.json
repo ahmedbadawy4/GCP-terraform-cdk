@@ -1,0 +1,25 @@
+{
+    "name": "application",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "start:dev": "nodemon index.ts",
+        "build": "tsc",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "express": "^4.21.1",
+        "express-winston": "^4.2.0",
+        "nodemon": "^3.1.7",
+        "tsc": "^2.0.4",
+        "winston": "^3.16.0"
+    },
+    "devDependencies": {
+        "@types/express": "^5.0.0",
+        "ts-node": "^10.9.2",
+        "typescript": "^5.6.3"
+    }
+}
