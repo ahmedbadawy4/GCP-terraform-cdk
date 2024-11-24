@@ -10,36 +10,52 @@ import { ServiceAccount } from "@cdktf/provider-google/lib/service-account";
 import { ComputeGlobalAddress } from "@cdktf/provider-google/lib/compute-global-address";
 import { ServiceNetworkingConnection } from "@cdktf/provider-google/lib/service-networking-connection";
 import { ProjectIamBinding } from "@cdktf/provider-google/lib/project-iam-binding";
+import { Variables } from "./variables";
+import { DataSources } from "./data-sources";
 // import { VpcAccessConnector } from "@cdktf/provider-google/lib/vpc-access-connector";
 
 class MyStack extends TerraformStack {
   constructor(scope: Construct, id: string) {
     super(scope, id);
-    const projectName = "app-work";
-    const projectId = "digital-seat-441309-j5";
-    const region = "europe-west3";
     
-    new CloudBackend(this, {
-      hostname: "app.terraform.io",
-      organization: "sisu-orgnization",
-      
-      workspaces: new NamedCloudWorkspace("sisu-workspace"),
-    });
+    //variables
+    const vars = new Variables(this);
+    
+    //data-sources
+    const dataSources = new DataSources(this, vars.projectId.value);
+    
+    // pick the environment from the variables
+    if (vars.environment.value == "production") {
+      new CloudBackend(this, {
+        hostname: "app.terraform.io",
+        organization: "prod-organization",
+        workspaces: new NamedCloudWorkspace("production"),
+      });
+    } else if (vars.environment.value === "development") {
+      new CloudBackend(this, {
+        hostname: "app.terraform.io",
+        organization: "staging-organization",
+        workspaces: new NamedCloudWorkspace("development"),
+      });
+    }
 
-    // Google Cloud provider
+    //provider
     new GoogleProvider(this, "Google", {
-      region: region,
-      project: projectId,
+      region: vars.region.value,
+      project: vars.projectId.value,
     });
-    // VPC network
+    
+    //resources
+
+    //vpc
     const network = new ComputeNetwork(this, "Network", {
-      name: `${projectName}-vpc`,
+      name: `${dataSources.projectData.name}-vpc`, //diffrent way to get project name
       autoCreateSubnetworks: false,
     });
 
-    // Subnet
+    //subnet
     const subnet = new ComputeSubnetwork(this, "Subnet", {
-      name: `${projectName}-subnet`,
+      name: `${vars.projectId.value}-subnet`,
       ipCidrRange: "10.0.0.0/16",
       region: "europe-west3",
       network: network.id,
@@ -54,26 +70,26 @@ class MyStack extends TerraformStack {
     //   ipCidrRange: "10.8.0.0/28", // Choose a CIDR block in your VPC range
     // });
 
-    // Global Address for Cloud SQL Reserved Range
+    //global address
     const globalAddress = new ComputeGlobalAddress(this, "GlobalAddress", {
-      name: `${projectName}-reserved-range`,
+      name: `${dataSources.projectData.name}-reserved-range`,
       purpose: "VPC_PEERING",
       addressType: "INTERNAL",
       prefixLength: 16,
       network: network.id,
     });
 
-    // VPC Peering for Cloud SQL
+    //vpc peering
     new ServiceNetworkingConnection(this, "VpcPeering", {
       network: network.id,
       service: "servicenetworking.googleapis.com",
       reservedPeeringRanges: [globalAddress.name],
     });
 
-    // Cloud SQL Instance with Private IP
+    //postgres sql instance
     const sqlInstance = new SqlDatabaseInstance(this, "SQLInstance", {
-      name: `${projectName}-sql-instance`,
-      region: region,
+      name: `${dataSources.projectData.name}-sql-instance`,
+      region: vars.region.value,
       databaseVersion: "POSTGRES_13",
       deletionProtection: false,
       settings: {
@@ -95,23 +111,38 @@ class MyStack extends TerraformStack {
         },
       },
     });
-    // GKE Service Account
+
+    //GKE service account
     const gkeServiceAccount = new ServiceAccount(this, "GkeServiceAccount", {
-      accountId: `${projectName}-gke-sa`,
-      displayName: `${projectName} GKE Service Account`,
-      project: projectId,
+      accountId: `${dataSources.projectData.name}-gke-sa`,
+      displayName: `${dataSources.projectData.name} GKE Service Account`,
+      project: dataSources.projectData.projectId,
     });
 
-    // IAM Binding for Cloud SQL Client
+    //iam bindings
     new ProjectIamBinding(this, "IamBinding", {
-      project: projectId,
+      project: dataSources.projectData.projectId,
       role: "roles/cloudsql.client",
       members: [`serviceAccount:${gkeServiceAccount.email}`],
+    });
+    new ProjectIamBinding(this, "IamBindingVpcAccessAdmin", {
+      project: dataSources.projectData.projectId,
+      role: "roles/vpcaccess.admin",
+      members: [
+        `serviceAccount:terraform-cdk-sa@${dataSources.projectData.projectId}.iam.gserviceaccount.com`,
+      ],
+    });
+    new ProjectIamBinding(this, "IamBindingServiceAccountUser", {
+      project: dataSources.projectData.projectId,
+      role: "roles/iam.serviceAccountUser",
+      members: [
+        `serviceAccount:terraform-cdk-sa@${dataSources.projectData.projectId}.iam.gserviceaccount.com`,
+      ],
     });
 
     // GKE Cluster
     const cluster = new ContainerCluster(this, "GKECluster", {
-      name: `${projectName}-gke-cluster`,
+      name: `${dataSources.projectData.name}-gke-cluster`,
       network: network.id,
       subnetwork: subnet.id,
       initialNodeCount: 1,
@@ -123,24 +154,7 @@ class MyStack extends TerraformStack {
       },
     });
 
-    // IAM Bindings
-    new ProjectIamBinding(this, "IamBindingVpcAccessAdmin", {
-      project: projectId,
-      role: "roles/vpcaccess.admin",
-      members: [
-        `serviceAccount:terraform-cdk-sa@${projectId}.iam.gserviceaccount.com`,
-      ],
-    });
-
-    new ProjectIamBinding(this, "IamBindingServiceAccountUser", {
-      project: projectId,
-      role: "roles/iam.serviceAccountUser",
-      members: [
-        `serviceAccount:terraform-cdk-sa@${projectId}.iam.gserviceaccount.com`,
-      ],
-    });
-
-    // Firewall rules for HTTPS and VPN
+    //firewall
     new ComputeFirewall(this, "VPNAccessFirewall", {
       name: "allow-vpn-access",
       network: network.id,
@@ -164,6 +178,7 @@ class MyStack extends TerraformStack {
       sourceRanges: ["10.26.32.12/32", "19.104.105.29/32"],
     });
 
+    //debug
     console.log("Cloud SQL Private IP:", sqlInstance.privateIpAddress);
     console.log("GKE Cluster ID:", cluster.id);
   }
