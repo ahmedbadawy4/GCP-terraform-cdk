@@ -1,5 +1,5 @@
 import { Construct } from "constructs";
-import { App, TerraformStack } from "cdktf";
+import { App, TerraformStack, CloudBackend, NamedCloudWorkspace, } from "cdktf";
 import { GoogleProvider } from "@cdktf/provider-google/lib/provider";
 import { ContainerCluster } from "@cdktf/provider-google/lib/container-cluster";
 import { SqlDatabaseInstance } from "@cdktf/provider-google/lib/sql-database-instance";
@@ -19,12 +19,18 @@ class MyStack extends TerraformStack {
     const projectId = "digital-seat-441309-j5";
     const region = "europe-west3";
     
+    new CloudBackend(this, {
+      hostname: "app.terraform.io",
+      organization: "sisu-orgnization",
+      
+      workspaces: new NamedCloudWorkspace("sisu-workspace"),
+    });
+
     // Google Cloud provider
     new GoogleProvider(this, "Google", {
       region: region,
       project: projectId,
     });
-
     // VPC network
     const network = new ComputeNetwork(this, "Network", {
       name: `${projectName}-vpc`,
@@ -109,6 +115,7 @@ class MyStack extends TerraformStack {
       network: network.id,
       subnetwork: subnet.id,
       initialNodeCount: 1,
+      deletionProtection: false,
       nodeConfig: {
         machineType: "e2-micro",
         diskSizeGb: 20,
@@ -156,6 +163,7 @@ class MyStack extends TerraformStack {
       ],
       sourceRanges: ["10.26.32.12/32", "19.104.105.29/32"],
     });
+
     console.log("Cloud SQL Private IP:", sqlInstance.privateIpAddress);
     console.log("GKE Cluster ID:", cluster.id);
   }
