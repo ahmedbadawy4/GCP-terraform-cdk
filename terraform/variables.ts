@@ -10,7 +10,6 @@ export class Variables {
     this.projectId = new TerraformVariable(scope, "project_id", {
       type: "string",
       description: "The id of the project",
-      default: "digital-seat-441309-j5",
     });
 
     this.region = new TerraformVariable(scope, "region", {
