@@ -1,6 +1,16 @@
-name: infra Deploy
+name: infrastructure Deploy
 
 on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        type: choice
+        required: true
+        default: 'development'
+        options:
+          - development
+          - production
   push:
     branches:
       - main  # production
@@ -78,17 +88,18 @@ jobs:
           cdktf diff --var environment=${{ needs.pick-environment.outputs.name }}
 
   apply:
-    runs-on: ubuntu-latest # preferred a self-hosted runner for secure builds
-    needs: [plan,pick-environment]
-    if: github.ref == 'refs/heads/main'  # Only apply on main branch
+    runs-on: ubuntu-latest # Prefer self-hosted runner for secure builds
+    needs: [plan, pick-environment]
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev' # Trigger only on dispatch or main branch
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      - name: Run cdktf deploy
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}  # Google Cloud credentials for Terraform
-        run: |
-          cdktf synth
-          cdktf deploy --var environment=${{ needs.pick-environment.outputs.name }}
+     - name: Checkout code
+       uses: actions/checkout@v4
+       env:
+            GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}     
+     - name: Run cdktf deploy
+       env:
+        GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}  # Google Cloud credentials for Terraform
+       run: |
+            cdktf synth
+            cdktf deploy --var environment=${{ needs.pick-environment.outputs.name }}
+
