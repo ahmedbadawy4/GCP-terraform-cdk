@@ -1,36 +1,90 @@
-name: Build and Push Docker Image
+name: Deploy to Kubernetes
 
 on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        type: choice
+        required: true
+        default: 'development'
+        options:
+          - development
+          - production
   push:
     branches:
-      - main  # Adjust this to the branch you want to trigger the build on
+      - main #production
+      - dev #development
 
 jobs:
-  build:
+  deploy-development:
     runs-on: ubuntu-latest # preferred a self-hosted runner for secure builds
-    
+    if: github.ref == 'refs/heads/main'
     steps:
-      # Checkout the repository
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      
-      # Set up Docker Buildx for multi-platform builds (optional but recommended)
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-        
-      # Log in to Docker Hub
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Kubernetes CLI
+        uses: azure/setup-kubectl@v4
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
-      
-      # Build and tag the Docker image
-      - name: Build Docker image
+          version: 'v1.31.3'
+
+      - name: Apply ArgoCD Development Application
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/sisu-tech:latest .
-      
-      # Push the Docker image to Docker Hub
-      - name: Push Docker image
+          kubectl apply -f argocd-development.yaml
+
+      - name: Setup ArgoCD CLI
         run: |
-          docker push ${{ secrets.DOCKER_USERNAME }}/sisu-tech:latest
+          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x /usr/local/bin/argocd
+
+      - name: Authenticate with ArgoCD
+        env:
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          ARGOCD_USERNAME: ${{ secrets.ARGOCD_USERNAME }}
+          ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
+        run: | 
+          argocd login $ARGOCD_SERVER \
+            --username $ARGOCD_USERNAME \
+            --password $ARGOCD_PASSWORD \
+            --insecure 
+
+      - name: Sync Development
+        run: |
+          argocd app sync app-work-development
+
+  deploy-production:
+    runs-on: ubuntu-latest # preferred a self-hosted runner for secure builds
+    if: github.ref == 'refs/heads/production'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Kubernetes CLI
+        uses: azure/setup-kubectl@v3
+        with:
+          version: 'v1.28.0'
+
+      - name: Apply ArgoCD Production Application
+        run: |
+          kubectl apply -f argocd-production.yaml
+
+      - name: Setup ArgoCD CLI
+        run: |
+          curl -sSL -o /usr/local/bin/argocd https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
+          chmod +x /usr/local/bin/argocd
+
+      - name: Authenticate with ArgoCD
+        env:
+          ARGOCD_SERVER: ${{ secrets.ARGOCD_SERVER }}
+          ARGOCD_USERNAME: ${{ secrets.ARGOCD_USERNAME }}
+          ARGOCD_PASSWORD: ${{ secrets.ARGOCD_PASSWORD }}
+        run: | 
+          argocd login $ARGOCD_SERVER \
+            --username $ARGOCD_USERNAME \
+            --password $ARGOCD_PASSWORD \
+            --insecure 
+
+      - name: Sync Production
+        run: |
+          argocd app sync app-work-production

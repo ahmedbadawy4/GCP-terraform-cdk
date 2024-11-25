@@ -1,0 +1,94 @@
+name: infra Deploy
+
+on:
+  push:
+    branches:
+      - main  # production
+      - dev   # development
+  pull_request:
+    branches:
+      - main
+      - dev
+
+jobs:
+  pick-environment:
+    runs-on: ubuntu-latest # preferred a self-hosted runner for secure builds
+    outputs:
+      name: ${{ steps.pick.outputs.name }}
+    steps:
+      - name: Pick environment
+        id: pick
+        run: |
+          if [[ ${{ github.ref }} == 'refs/heads/main' ]]; then
+            echo "name=production" >> $GITHUB_OUTPUT
+          else
+            echo "name=development" >> $GITHUB_OUTPUT
+          fi
+  setup:
+    runs-on: ubuntu-latest # preferred a self-hosted runner for secure builds
+    needs: pick-environment
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+
+    - name: Cache npm modules
+      uses: actions/cache@v4
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+
+    - name: Install dependencies
+      run: |
+        cd terraform
+        npm install
+
+    - name: Set up Terraform
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: '1.9.8'
+
+    - name: Cache Terraform providers
+      uses: actions/cache@v4
+      with:
+        path: ~/.terraform.d/plugin-cache
+        key: ${{ runner.os }}-terraform-${{ hashFiles('**/*.tf') }}
+        restore-keys: |
+          ${{ runner.os }}-terraform-
+
+  plan:
+    runs-on: ubuntu-latest # preferred a self-hosted runner for secure builds
+    needs: [setup, pick-environment]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: Run cdktf plan
+        run: |
+          cdktf synth
+          cdktf diff --var environment=${{ needs.pick-environment.outputs.name }}
+
+  apply:
+    runs-on: ubuntu-latest # preferred a self-hosted runner for secure builds
+    needs: [plan,pick-environment]
+    if: github.ref == 'refs/heads/main'  # Only apply on main branch
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      - name: Run cdktf deploy
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}  # Google Cloud credentials for Terraform
+        run: |
+          cdktf synth
+          cdktf deploy --var environment=${{ needs.pick-environment.outputs.name }}

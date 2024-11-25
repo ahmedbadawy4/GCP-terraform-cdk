@@ -1,0 +1,33 @@
+name: Syntax-check
+run-name: ${{ github.event_name == 'workflow_dispatch' && format('#{0}-{1}-branch-{2}', github.run_number, github.ref_name, github.triggering_actor) || '' }}
+on:
+  pull_request:
+    branches: 
+        - main
+        - dev
+
+permissions: write-all
+
+jobs:
+  check-syntax:
+    runs-on: ubuntu-latest # preferred a self-hosted runner for secure builds
+    steps:
+    - uses: actions/checkout@v4
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      with:
+        fetch-depth: 0
+    - name: setup-precommit
+      run: |
+        pip install pre-commit
+        pre-commit --version
+        pre-commit install
+        curl -s https://raw.githubusercontent.com/terraform-linters/tflint/master/install_linux.sh | bash
+      shell: bash
+    - name: check-all-syntax
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      run: |
+        git config --global url."https://${GITHUB_TOKEN}@github.com".insteadOf "https://github.com"
+        pre-commit run --all-files
+      shell: bash
