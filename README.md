@@ -21,7 +21,7 @@ The application is simply a proof of concept (minimal version) of a complete pro
 
 ### Usage
 1. Infrastructure deployment:
-- Run the Github action pipeline name `infrastructure Deploy` described in the `infra-deploy.yaml` file.
+- Run the Github action pipeline named `infrastructure Deploy`, described in the `infra-deploy.yaml` file.
 
     *Notes:*
 
@@ -66,4 +66,50 @@ The application is simply a proof of concept (minimal version) of a complete pro
 - This part was added to enhance the code quality and limit syntax and style errors.
 - Pipeline as a checkpoint for the raised Pull Requests? 
 
+## Local run
+### Prerequisites
+- Node.js (LTS version recommended)
+- Docker
+- Terraform
+- terraform cloud account with Organization and workspace.
+- Google Cloud project ID
+- Python (>=3.7), pip (Python package manager)
 
+1. Run the application (Mac OS): (in application directory)
+    
+    a. Check TypeScript Installation: Ensure TypeScript is installed as a dependency `npm install typescript --save-dev`
+    
+    b. Debug Errors: Run tsc directly to see detailed error output `npx tsc`
+
+    c. Node Modules: Ensure dependencies are installed `npm install`
+
+    d. Build the application `node build/index.js`.
+      this will pop up a message `Express server is listening at 3000` which means the application exposed on localhost:3000
+
+2. Build a docker image (local)
+
+    a. Buld the docker image `docker build -t sisu-tech .`
+
+    b. Run the image on port 3000 `docker run -p 3000:3000 sisu-tech`
+
+3. Deploy infra using terraform CDK (in terraform directory)
+
+    a. Install cdktf `npm install -g cdktf-cli`
+
+    b. Run `cdktf synth` to generate Terraform JSON configurations.
+    
+    b. Run `cdktf diff --var environment=<environment_name> --var project_id=<project_ID>` to display the planned changes
+
+    c. Terraform apply `cdktf diff --var environment=<environment_name> --var project_id=<project_ID>` to deploy the infra.
+
+4. Contribution
+
+    a. Install pre-commit `pip install pre-commit`.
+
+    b. in the root directory Run `pre-commit install`
+
+    c. Commit changes `git commit -m "Your commit message"`
+    
+    d. Run `pre-commit run --all-files` to check the changes.
+
+    c. Bypass ( not recommended) Run `git commit --no-verify`
