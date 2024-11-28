@@ -4,7 +4,8 @@ on:
   push:
     branches:
       - main
-
+      - dev
+permissions: read-all
 jobs:
   build:
     runs-on: ubuntu-latest # Prefer self-hosted runners for secure builds

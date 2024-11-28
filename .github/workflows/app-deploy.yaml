@@ -2,19 +2,11 @@ name: Deploy to Kubernetes
 
 on:
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Environment to deploy to'
-        type: choice
-        required: true
-        default: 'development'
-        options:
-          - development
-          - production
   push:
     branches:
-      - main #production
-      - dev #development
+      - main
+      - dev 
+permissions: read-all
 
 jobs:
   deploy-development:

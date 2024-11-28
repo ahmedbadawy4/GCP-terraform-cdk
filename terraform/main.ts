@@ -1,5 +1,5 @@
 import { Construct } from "constructs";
-import { App, TerraformStack, CloudBackend, NamedCloudWorkspace, } from "cdktf";
+import { App, TerraformStack, TerraformOutput, CloudBackend, NamedCloudWorkspace, } from "cdktf";
 import { GoogleProvider } from "@cdktf/provider-google/lib/provider";
 import { ContainerCluster } from "@cdktf/provider-google/lib/container-cluster";
 import { SqlDatabaseInstance } from "@cdktf/provider-google/lib/sql-database-instance";
@@ -90,13 +90,75 @@ class MyStack extends TerraformStack {
     const sqlInstance = new SqlDatabaseInstance(this, "SQLInstance", {
       name: `${dataSources.projectData.name}-sql-instance`,
       region: vars.region.value,
-      databaseVersion: "POSTGRES_13",
+      databaseVersion: "POSTGRES_16",
       deletionProtection: false,
       settings: {
         tier: "db-f1-micro",
+        backupConfiguration: {
+          enabled: true,
+        },
+        databaseFlags: [
+          {
+          name: "log_duration",
+          value: "on",
+        },
+        {
+          name: "log_statement",
+          value: "all",
+        },
+        {
+          name: "log_min_messages",
+          value: "ERROR",
+        },
+        {
+          name: "log_level",
+          value: "ERROR",
+        },
+        {
+          name: "log_connections",
+          value: "on",
+        },
+        {
+          name: "log_disconnections",
+          value: "on",
+        },
+        {
+          name: "log_lock_waits",
+          value: "on",
+        },
+        {
+          name: "log_temp_files",
+          value: "0",
+        },
+        {
+          name: "log_autovacuum_min_duration",
+          value: "0",
+        },
+        {
+          name: "log_checkpoints",
+          value: "on",
+        },
+        {
+          name: "log_line_prefix",
+          value: "%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h ",
+        },
+        {
+          name: "log_timezone",
+          value: "UTC",
+        },
+        {
+          name: "log_hostname",
+          value: "on",
+        },
+        {
+          name: "audit_log",
+          value: "on",
+        },
+      ],
         ipConfiguration: {
           ipv4Enabled: false,
           privateNetwork: `projects/digital-seat-441309-j5/global/networks/${network.name}`,
+          sslMode: "TRUSTED_CLIENT_CERTIFICATE_REQUIRED",
           authorizedNetworks: [
             {
               name: "VPN Access 2",
@@ -147,10 +209,15 @@ class MyStack extends TerraformStack {
       subnetwork: subnet.id,
       initialNodeCount: 1,
       deletionProtection: false,
+      networkPolicy:{
+          enabled: true,
+        },
       nodeConfig: {
         machineType: "e2-micro",
         diskSizeGb: 20,
         serviceAccount: gkeServiceAccount.email,
+        workloadMetadataConfig: [{ mode: "GKE_METADATA_SERVER" }], 
+        },
       },
     });
 
@@ -164,18 +231,28 @@ class MyStack extends TerraformStack {
           ports: ["443"], // HTTPS
         },
       ],
-      sourceRanges: ["0.0.0.0/0"],
+      sourceRanges: ["62.65.233.178"], // "0.0.0.0/0", commented and replaced with specific IP
+      disabled: false,
     });
 
     new ComputeFirewall(this, "ClusterVPNAccess", {
       name: "vpn-access",
       network: network.id,
-      allow: [
+      deny: [
         {
           protocol: "all",
         },
       ],
       sourceRanges: ["10.26.32.12/32", "19.104.105.29/32"],
+      disabled: false,
+    });
+
+    //outputs
+    new TerraformOutput(this, "CloudSQLPrivateIP", {
+      value: sqlInstance.privateIpAddress,
+    });
+    new TerraformOutput(this, "GKEClusterID", {
+      value: cluster.id,
     });
 
     //debug
