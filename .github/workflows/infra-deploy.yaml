@@ -86,11 +86,10 @@ jobs:
      - name: Checkout code
        uses: actions/checkout@v4
        env:
-            GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}     
+            GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
      - name: Run cdktf deploy
        env:
         GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_CREDENTIALS }}  # Google Cloud credentials for Terraform
        run: |
             cdktf synth
             cdktf deploy --var environment=${{ needs.pick-environment.outputs.name }}
-

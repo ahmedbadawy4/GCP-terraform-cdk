@@ -17,13 +17,13 @@ import { DataSources } from "./data-sources";
 class MyStack extends TerraformStack {
   constructor(scope: Construct, id: string) {
     super(scope, id);
-    
+
     //variables
     const vars = new Variables(this);
-    
+
     //data-sources
     const dataSources = new DataSources(this, vars.projectId.value);
-    
+
     // pick the environment from the variables
     if (vars.environment.value == "production") {
       new CloudBackend(this, {
@@ -44,7 +44,7 @@ class MyStack extends TerraformStack {
       region: vars.region.value,
       project: vars.projectId.value,
     });
-    
+
     //resources
 
     //vpc
@@ -216,9 +216,7 @@ class MyStack extends TerraformStack {
         machineType: "e2-micro",
         diskSizeGb: 20,
         serviceAccount: gkeServiceAccount.email,
-        workloadMetadataConfig: [{ mode: "GKE_METADATA_SERVER" }], 
         },
-      },
     });
 
     //firewall

@@ -25,7 +25,7 @@ The application is simply a proof of concept (minimal version) of a complete pro
 
     *Notes:*
 
-    *-  The pipeline will auto trigger in pull-request open for the branches dev and main.* 
+    *-  The pipeline will auto trigger in pull-request open for the branches dev and main.*
 
     *- Assuming the branch main targets the production and the branch dev targets the development environment.*
 
@@ -35,26 +35,26 @@ The application is simply a proof of concept (minimal version) of a complete pro
 
 
 2. Publish the application image:
-    
+
 - Run the Github action pipeline name `Publish Docker Image to GCR` described in the `app-publish.yaml` file.
 
     *Notes:*
 
-    *- The image should be published for use across all environments as a best practice. assuming one GCR is hosting images in all the environments.* 
+    *- The image should be published for use across all environments as a best practice. assuming one GCR is hosting images in all the environments.*
 
     *- The pipeline I used basic authentication to Google Cloud, in real case a pre-configured self-hosted runner should be a better option.*
 
 3. application deployment:
 
 - After deploying the infra and publishing the docker image we can install the application to the the new kubernetes cluster using ArgoCD.
-    
+
     a. Assuming the argoCD is running in the same cluster. Or edit the files in the `argocd` directory with the correct ArgoCD server configuration.
 
     b. Run the Github action pipeline name `Deploy to Kubernetes` described in the `app-deploy.yaml` file.
 
     *Notes:*
 
-    *-  The pipeline will auto trigger in pull-request open for the branches dev and main.* 
+    *-  The pipeline will auto trigger in pull-request open for the branches dev and main.*
 
     *- Assuming the branch main targets the production and the branch dev targets the development environment.*
 
@@ -64,7 +64,7 @@ The application is simply a proof of concept (minimal version) of a complete pro
 
 4. pre-commit.
 - This part was added to enhance the code quality and limit syntax and style errors.
-- Pipeline as a checkpoint for the raised Pull Requests? 
+- Pipeline as a checkpoint for the raised Pull Requests?
 
 ## Local run
 ### Prerequisites
@@ -76,9 +76,9 @@ The application is simply a proof of concept (minimal version) of a complete pro
 - Python (>=3.7), pip (Python package manager)
 
 1. Run the application (Mac OS): (in application directory)
-    
+
     a. Check TypeScript Installation: Ensure TypeScript is installed as a dependency `npm install typescript --save-dev`
-    
+
     b. Debug Errors: Run tsc directly to see detailed error output `npx tsc`
 
     c. Node Modules: Ensure dependencies are installed `npm install`
@@ -97,7 +97,7 @@ The application is simply a proof of concept (minimal version) of a complete pro
     a. Install cdktf `npm install -g cdktf-cli`
 
     b. Run `cdktf synth` to generate Terraform JSON configurations.
-    
+
     b. Run `cdktf diff --var environment=<environment_name> --var project_id=<project_ID>` to display the planned changes
 
     c. Terraform apply `cdktf diff --var environment=<environment_name> --var project_id=<project_ID>` to deploy the infra.
@@ -109,7 +109,7 @@ The application is simply a proof of concept (minimal version) of a complete pro
     b. in the root directory Run `pre-commit install`
 
     c. Commit changes `git commit -m "Your commit message"`
-    
+
     d. Run `pre-commit run --all-files` to check the changes.
 
     c. Bypass ( not recommended) Run `git commit --no-verify`

@@ -2,7 +2,7 @@ name: Syntax-check
 run-name: ${{ github.event_name == 'workflow_dispatch' && format('#{0}-{1}-branch-{2}', github.run_number, github.ref_name, github.triggering_actor) || '' }}
 on:
   pull_request:
-    branches: 
+    branches:
         - main
         - dev
 

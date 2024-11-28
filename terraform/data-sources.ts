@@ -5,7 +5,7 @@ export class DataSources {
   public readonly projectData: DataGoogleProject;
   constructor(scope: Construct, projectId: string) {
     this.projectData = new DataGoogleProject(scope, "projectData", {
-      projectId: projectId, 
+      projectId: projectId,
     });
   }
 }
