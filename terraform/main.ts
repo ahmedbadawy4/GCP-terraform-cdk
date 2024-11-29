@@ -60,6 +60,12 @@ class MyStack extends TerraformStack {
       region: "europe-west3",
       network: network.id,
       privateIpGoogleAccess: true,
+      logConfig: {
+        aggregationInterval: "INTERVAL_5_MIN",
+        flowSampling: 0.5,
+        metadata: "INCLUDE_ALL_METADATA",
+        metadataFields: ["PROJECT_ID", "INSTANCE_ID", "ZONE", "INSTANCE_NAME"],
+      },
     });
 
     // // Create a private services access connection
@@ -205,6 +211,7 @@ class MyStack extends TerraformStack {
     // GKE Cluster
     const cluster = new ContainerCluster(this, "GKECluster", {
       name: `${dataSources.projectData.name}-gke-cluster`,
+      enableIntranodeVisibility: true,
       network: network.id,
       subnetwork: subnet.id,
       initialNodeCount: 1,
