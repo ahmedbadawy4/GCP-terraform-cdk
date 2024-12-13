@@ -1,5 +1,5 @@
 # app-work
-Monorepo for deploying TypeScript app on GKE infra.
+Monorepo for deploying TypeScript app on Google kubernetes cluster GKE.
 
 ## Overview
 The application is simply a proof of concept (minimal version) of a complete project of running an application on Google Cloud Kubernetes Engine with a private connection to SQL Server in two environments [development, and production]
